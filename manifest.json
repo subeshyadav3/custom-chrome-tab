@@ -1,0 +1,11 @@
+{
+    "manifest_version": 3,
+"name": "Custom Tab",
+    "version": "2.0",
+    "description": "Customizable new tab with time, quotes, bookmarks, and quick links",
+    "permissions": ["bookmarks"],
+    "chrome_url_overrides": {
+      "newtab": "index.html"
+    }
+  }
+  
