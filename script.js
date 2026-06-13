@@ -42,6 +42,7 @@ function saveShortcuts(list) {
 }
 
 let editingIndex = -1;
+let promptCallback = null;
 
 function openDialog(index) {
   editingIndex = index;
@@ -69,6 +70,24 @@ function closeDialog() {
   overlay.classList.remove("show");
   dialog.classList.remove("show");
   editingIndex = -1;
+  promptCallback = null;
+  nameInput.style.display = "";
+  document.querySelector("#dialog label[for='dialog-name']").style.display = "";
+  document.querySelector("#dialog label[for='dialog-url']").textContent = "URL";
+  urlInput.placeholder = "https://example.com";
+}
+
+function showPrompt(title, label, placeholder, defaultValue, callback) {
+  promptCallback = callback;
+  dialogTitle.textContent = title;
+  document.querySelector("#dialog label[for='dialog-name']").style.display = "none";
+  nameInput.style.display = "none";
+  document.querySelector("#dialog label[for='dialog-url']").textContent = label;
+  urlInput.placeholder = placeholder;
+  urlInput.value = defaultValue || "";
+  overlay.classList.add("show");
+  dialog.classList.add("show");
+  urlInput.focus();
 }
 
 function openMenu(wrapper) {
@@ -170,6 +189,15 @@ function render() {
 }
 
 doneBtn.addEventListener("click", function () {
+  if (promptCallback) {
+    const val = urlInput.value.trim();
+    if (!val) return;
+    const fn = promptCallback;
+    promptCallback = null;
+    fn(val);
+    closeDialog();
+    return;
+  }
   const name = nameInput.value.trim();
   const url = urlInput.value.trim();
   if (!name || !url) return;
@@ -191,8 +219,14 @@ doneBtn.addEventListener("click", function () {
   render();
 });
 
-cancelBtn.addEventListener("click", closeDialog);
-overlay.addEventListener("click", closeDialog);
+cancelBtn.addEventListener("click", function () {
+  promptCallback = null;
+  closeDialog();
+});
+overlay.addEventListener("click", function () {
+  promptCallback = null;
+  closeDialog();
+});
 
 document.addEventListener("keydown", function (e) {
   if (e.key === "Escape") {
@@ -240,6 +274,9 @@ function initGreeting() {
 }
 
 function createTopBarLink(item, index) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "top-bar-item";
+
   const a = document.createElement("a");
   a.href = item.url;
   a.target = "_self";
@@ -266,7 +303,23 @@ function createTopBarLink(item, index) {
   span.textContent = item.name;
   a.appendChild(img);
   a.appendChild(span);
-  return a;
+  wrapper.appendChild(a);
+
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "top-bar-remove";
+  removeBtn.textContent = "×";
+  removeBtn.title = "Remove " + item.name;
+  removeBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    let links = getTopBarLinks();
+    if (!links) return;
+    links.splice(index, 1);
+    saveTopBarLinks(links);
+    renderTopBar();
+  });
+  wrapper.appendChild(removeBtn);
+
+  return wrapper;
 }
 
 function renderTopBar() {
@@ -287,7 +340,8 @@ function renderTopBar() {
 
   links.forEach((item, i) => {
     if (i === accIdx) return;
-    bar.appendChild(createTopBarLink(item, i));
+    const wrapper = createTopBarLink(item, i);
+    bar.appendChild(wrapper);
   });
 
   const addBtn = document.createElement("button");
@@ -302,10 +356,11 @@ function renderTopBar() {
   bar.appendChild(addBtn);
 
   if (accIdx !== -1) {
-    const el = createTopBarLink(links[accIdx], accIdx);
-    el.classList.add("top-bar-account");
-    el.draggable = false;
-    bar.appendChild(el);
+    const wrapper = createTopBarLink(links[accIdx], accIdx);
+    const a = wrapper.querySelector("a");
+    a.draggable = false;
+    wrapper.querySelector(".top-bar-remove").remove();
+    bar.appendChild(wrapper);
   }
 
   // Drag-drop reorder on all draggable links (excluding Account)
@@ -397,12 +452,33 @@ function renderAddMenu() {
 
       el.addEventListener("click", function (e) {
         e.stopPropagation();
-        let links = getTopBarLinks() || s.topBarLinks || [];
         if (isAdded) {
+          let links = getTopBarLinks() || s.topBarLinks || [];
           links = links.filter((l) => l.url.replace(/\/$/, "") !== cleanUrl);
-        } else {
-          links.push({ name: site.name, url: site.url });
+          saveTopBarLinks(links);
+          renderTopBar();
+          return;
         }
+        if (site.prompt) {
+          const menuEl = document.getElementById("add-menu");
+          if (menuEl) menuEl.classList.remove("show");
+          showPrompt(
+            site.name,
+            site.prompt,
+            site.placeholder || "Enter value...",
+            "",
+            function (val) {
+              if (!val) return;
+              let links = getTopBarLinks() || s.topBarLinks || [];
+              links.push({ name: site.name, url: site.url.replace("{input}", encodeURIComponent(val)) });
+              saveTopBarLinks(links);
+              renderTopBar();
+            }
+          );
+          return;
+        }
+        let links = getTopBarLinks() || s.topBarLinks || [];
+        links.push({ name: site.name, url: site.url });
         saveTopBarLinks(links);
         renderTopBar();
       });

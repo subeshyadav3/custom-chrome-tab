@@ -19,12 +19,11 @@ function defaultFamousSites() {
     { name: "WhatsApp", url: "https://web.whatsapp.com/", category: "Social" },
     { name: "Discord", url: "https://discord.com/channels/@me", category: "Social" },
     { name: "Telegram", url: "https://web.telegram.org/", category: "Social" },
-    { name: "GitHub", url: "https://github.com/", category: "Dev" },
-    { name: "Stack Overflow", url: "https://stackoverflow.com/", category: "Dev" },
-    { name: "CodePen", url: "https://codepen.io/", category: "Dev" },
-    { name: "Hacker News", url: "https://news.ycombinator.com/", category: "Dev" },
-    { name: "Dev.to", url: "https://dev.to/", category: "Dev" },
-    { name: "GitLab", url: "https://gitlab.com/", category: "Dev" },
+    { name: "Hamro Patro", url: "https://hamropatro.com/", category: "Nepali" },
+    { name: "Khalti", url: "https://khalti.com/", category: "Nepali" },
+    { name: "eSewa", url: "https://esewa.com.np/", category: "Nepali" },
+    { name: "SastoDeal", url: "https://www.sastodeal.com/", category: "Nepali" },
+    { name: "Daraz", url: "https://www.daraz.com.np/", category: "Nepali" },
     { name: "ChatGPT", url: "https://chat.openai.com", category: "AI" },
     { name: "Claude", url: "https://claude.ai/", category: "AI" },
     { name: "Perplexity", url: "https://www.perplexity.ai/", category: "AI" },
@@ -37,6 +36,12 @@ function defaultFamousSites() {
     { name: "Netflix", url: "https://www.netflix.com/", category: "Entertainment" },
     { name: "Spotify", url: "https://open.spotify.com/", category: "Entertainment" },
     { name: "Twitch", url: "https://www.twitch.tv/", category: "Entertainment" },
+    { name: "GitHub", url: "https://github.com/{input}", category: "Dev", prompt: "GitHub username", placeholder: "e.g. subeshyadav3" },
+    { name: "Stack Overflow", url: "https://stackoverflow.com/", category: "Dev" },
+    { name: "CodePen", url: "https://codepen.io/", category: "Dev" },
+    { name: "Hacker News", url: "https://news.ycombinator.com/", category: "Dev" },
+    { name: "Dev.to", url: "https://dev.to/", category: "Dev" },
+    { name: "GitLab", url: "https://gitlab.com/", category: "Dev" },
     { name: "Amazon", url: "https://www.amazon.com/", category: "Shopping" },
     { name: "eBay", url: "https://www.ebay.com/", category: "Shopping" },
     { name: "Figma", url: "https://www.figma.com/", category: "Design" },
@@ -116,7 +121,28 @@ function defaultSettings() {
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SK);
-    if (raw) return deepMerge(defaultSettings(), JSON.parse(raw));
+    if (raw) {
+      const saved = JSON.parse(raw);
+      const merged = deepMerge(defaultSettings(), saved);
+      // Merge famousSites items so new fields (e.g. prompt) from code updates are picked up
+      const def = defaultSettings();
+      if (def.famousSites) {
+        const siteMap = {};
+        def.famousSites.forEach((s, i) => { siteMap[s.name + "|" + i] = s; });
+        merged.famousSites = def.famousSites.map((defItem, i) => {
+          const savedIdx = saved.famousSites ? saved.famousSites.findIndex((x) => x.name === defItem.name) : -1;
+          if (savedIdx !== -1) {
+            const savedItem = saved.famousSites[savedIdx];
+            saved.famousSites.splice(savedIdx, 1);
+            return Object.assign({}, savedItem, defItem);
+          }
+          return defItem;
+        });
+        // Append any user-added sites that don't exist in defaults
+        if (saved.famousSites) merged.famousSites = merged.famousSites.concat(saved.famousSites);
+      }
+      return merged;
+    }
   } catch (_) {}
   return defaultSettings();
 }

@@ -8,15 +8,15 @@ A fully customizable Chrome new tab replacement with dynamic theming, widgets, b
 - **Quote** — Random motivational quote on every new tab. Configurable list.
 - **Search Bar** — Multi-engine search (Google, DuckDuckGo, Bing, Brave, Yandex, Ecosia, or custom) with autocomplete suggestions.
 - **Quick Links** — Bookmark-style shortcut grid. Add, delete, and reorder.
-- **Top Bar** — Social/utility links (Gmail, GitHub, etc.) displayed as pill buttons. Drag-and-drop reorderable. "+" button to add from a categorized site gallery.
-- **Todo Widget** — Personal task list. Add, check off, and delete tasks. Persisted in localStorage.
-- **Pomodoro Timer** — Focus timer with configurable work/break intervals. Start, pause, and reset.
-- **Date Widget** — Shows current date in full, short, or weekday-only format.
-- **Weather Widget** — Live weather from Open-Meteo (no API key needed). Supports Celsius/Fahrenheit.
-- **Settings Panel** — Full in-page settings panel with theme, layout toggles, search config, greeting customization, widget controls, import/export, and custom CSS.
+- **Top Bar** — Social/utility links (Gmail, GitHub, etc.) displayed as pill buttons. Drag-and-drop reorderable. Hover to reveal remove button. "+" button to add from a categorized site gallery (Social, Dev, AI, Productivity, Entertainment, Shopping, Design, Reference, Nepali). Sites with variable URLs (e.g. GitHub) prompt for input before adding.
+- **Todo Widget** — Personal task list with "Tasks" header. Add, check off, and delete tasks. Persisted in localStorage.
+- **Pomodoro Timer** — Focus timer with configurable work/break intervals. Start, pause, and reset. Visible drag handle.
+- **Date Widget** — Shows current date in full, short, or weekday-only format. Draggable via double-click.
+- **Weather Widget** — Live weather from Open-Meteo (no API key needed). Supports Celsius/Fahrenheit. Draggable via double-click.
+- **Settings Panel** — Full in-page settings panel with theme, layout toggles, search config, greeting customization, widget controls, import/export, and custom CSS. Settings button is draggable via double-click.
 - **Theme Engine** — Dark/Light/Auto mode, custom accent color, font selection, and background (solid, gradient, image upload, or video upload).
 - **Background Gallery** — 12 solid colors + 18 gradient presets, plus custom URL and file upload for images/videos.
-- **Drag-and-Drop Layout** — Pomodoro and Todo widgets have visible drag handles; Time, Date, Weather, and Settings button are draggable via double-click. Positions persist. Lock layout option available.
+- **Drag-and-Drop Layout** — Pomodoro and Todo widgets have visible drag handles (≡). Time, Date, Weather, and Settings button are draggable via double-click (dashed outline appears, then click to drag; Escape to cancel). All positions persist in localStorage. Lock layout option available in settings.
 - **Import / Export** — Export your full settings + todo list as a JSON file. Import to restore on another device.
 
 ## Installation
