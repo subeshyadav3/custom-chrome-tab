@@ -54,12 +54,12 @@ function defaultFamousSites() {
 function defaultSettings() {
   const cfg = typeof ENV_CONFIG !== "undefined" && ENV_CONFIG ? ENV_CONFIG : {};
   return {
-    version: 1,
+    version: 2,
     theme: {
       mode: "dark",
       accent: "#3b82f6",
       background: { type: "solid", value: "#020617" },
-      font: "'JetBrains Mono', monospace",
+      font: "'Inter', 'JetBrains Mono', monospace",
     },
     layout: {
       showGreeting: true,
@@ -67,13 +67,18 @@ function defaultSettings() {
       showDate: false,
       showQuote: true,
       showSearch: true,
+      showEngineSwitcher: true,
       showTopBar: true,
       showShortcuts: true,
       showTodo: true,
       showPomodoro: false,
+      showHabits: false,
+      showNotes: false,
+      showSettingsBtn: true,
       lockLayout: false,
       iconSize: 32,
     },
+    timeFormat: "24h",
     search: {
       engine: "google",
       customAction: "",
@@ -109,6 +114,8 @@ function defaultSettings() {
       "Small progress is still progress.",
       "Think deeply. Build simply.",
       "Debugging is twice as hard as writing the code.",
+      "The best code is no code at all.",
+      "Make it work, make it right, make it fast.",
     ],
     faviconService: cfg.faviconService || "https://www.google.com/s2/favicons?domain={domain}&sz=64",
     suggestAPI: cfg.suggestAPI || "https://suggestqueries.google.com/complete/search?client=firefox&q=",
@@ -191,10 +198,16 @@ function applyTheme(theme) {
 
   root.style.setProperty("--accent", theme.accent);
   root.style.setProperty("--accent-hover", adjustBrightness(theme.accent, -20));
+  // Compute accent glow
+  const accentHex = theme.accent || "#3b82f6";
+  root.style.setProperty("--accent-glow", hexToRgba(accentHex, 0.35));
   root.style.setProperty("--font", theme.font);
 
   const existingVideo = document.getElementById("bg-video-container");
   if (existingVideo) existingVideo.remove();
+
+  // Stop any existing aurora
+  if (typeof stopAurora === "function") stopAurora();
 
   if (theme.background.type === "solid") {
     root.style.setProperty("--bg-image", "none");
@@ -219,6 +232,13 @@ function applyTheme(theme) {
     container.id = "bg-video-container";
     container.appendChild(video);
     document.body.prepend(container);
+  } else if (theme.background.type === "aurora") {
+    root.style.setProperty("--bg-image", "none");
+    root.style.setProperty("--bg-color", "#020617");
+    // initAurora is in script.js and will be called after
+    setTimeout(() => {
+      if (typeof initAurora === "function") initAurora();
+    }, 100);
   }
 }
 
@@ -253,6 +273,14 @@ function adjustBrightness(hex, percent) {
   return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
+function hexToRgba(hex, alpha) {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // ─── Apply settings ─────────────────────────────────────
 
 function applySettings() {
@@ -268,21 +296,27 @@ function applySettings() {
 }
 
 function applyLayout(layout) {
-  document.getElementById("greeting").style.display = layout.showGreeting ? "" : "none";
-  document.getElementById("time").style.display = layout.showTime ? "" : "none";
-  document.getElementById("quote").style.display = layout.showQuote ? "" : "none";
-  document.getElementById("google-search").style.display = layout.showSearch ? "" : "none";
-  document.getElementById("top-bar").style.display = layout.showTopBar ? "" : "none";
-  document.getElementById("quick-links").style.display = layout.showShortcuts ? "" : "none";
+  const maybeHide = (id, show) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? "" : "none";
+  };
 
-  const dateEl = document.getElementById("widget-date");
-  if (dateEl) dateEl.style.display = layout.showDate ? "" : "none";
+  maybeHide("greeting", layout.showGreeting);
+  maybeHide("greeting-subtitle", layout.showGreeting);
+  maybeHide("time", layout.showTime);
+  maybeHide("quote", layout.showQuote);
+  maybeHide("google-search", layout.showSearch);
+  maybeHide("top-bar", layout.showTopBar);
+  maybeHide("quick-links", layout.showShortcuts);
+  maybeHide("widget-date", layout.showDate);
+  maybeHide("widget-todo", layout.showTodo);
+  maybeHide("widget-pomo", layout.showPomodoro);
+  maybeHide("widget-habits", layout.showHabits);
+  maybeHide("widget-notes", layout.showNotes);
+  maybeHide("settings-btn", layout.showSettingsBtn);
 
-  const todoEl = document.getElementById("widget-todo");
-  if (todoEl) todoEl.style.display = layout.showTodo ? "" : "none";
-
-  const pomoEl = document.getElementById("widget-pomo");
-  if (pomoEl) pomoEl.style.display = layout.showPomodoro ? "" : "none";
+  const engineSwitcher = document.getElementById("engine-switcher");
+  if (engineSwitcher) engineSwitcher.style.display = layout.showEngineSwitcher ? "" : "none";
 
   const cards = document.querySelectorAll(".link-card img");
   cards.forEach((img) => {
@@ -293,17 +327,19 @@ function applyLayout(layout) {
 
 function applyGreeting(g) {
   const el = document.getElementById("greeting");
+  if (!el) return;
   if (g.dynamic) {
     const h = new Date().getHours();
     let prefix = "";
-    if (h < 12) prefix = "Good morning, ";
-    else if (h < 17) prefix = "Good afternoon, ";
-    else prefix = "Good evening, ";
-    el.innerHTML = prefix + "&lt;" + g.name + " /&gt;";
+    if (h < 12) prefix = "Good morning,";
+    else if (h < 17) prefix = "Good afternoon,";
+    else prefix = "Good evening,";
+    el.innerHTML = `<span class="greeting-prefix">${prefix}</span> <span class="greeting-name">&lt;${g.name} /&gt;</span>`;
   } else {
-    el.innerHTML = "&lt;" + g.name + " /&gt;";
+    el.innerHTML = `<span class="greeting-name">&lt;${g.name} /&gt;</span>`;
   }
-  document.getElementById("greeting-subtitle").textContent = g.subtitle;
+  const sub = document.getElementById("greeting-subtitle");
+  if (sub) sub.textContent = g.subtitle || "";
 }
 
 function applySearch(s) {
@@ -367,77 +403,27 @@ function updateDateWidget(format) {
   }
 }
 
-// ─── Pomodoro ────────────────────────────────────────────
-
-let pomoInterval = null;
-let pomoState = { running: false, type: "work", remaining: 0 };
-
-function pomoFormatTime(secs) {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-}
-
-function pomoUpdateDisplay() {
-  const el = document.getElementById("widget-pomo");
-  if (!el) return;
-  const timer = el.querySelector(".pomo-timer");
-  const btn = el.querySelector(".pomo-btn");
-  const label = el.querySelector(".pomo-label");
-  if (timer) timer.textContent = pomoFormatTime(pomoState.remaining);
-  if (btn) btn.textContent = pomoState.running ? "Pause" : "Start";
-  if (label) label.textContent = pomoState.type === "work" ? "Focus" : "Break";
-}
-
-function pomoTick() {
-  if (pomoState.remaining <= 0) {
-    clearInterval(pomoInterval);
-    pomoInterval = null;
-    pomoState.running = false;
-    pomoState.type = pomoState.type === "work" ? "break" : "work";
-    const s = loadSettings();
-    pomoState.remaining = (pomoState.type === "work" ? s.pomodoro.work : s.pomodoro.break) * 60;
-    pomoUpdateDisplay();
-    return;
-  }
-  pomoState.remaining--;
-  pomoUpdateDisplay();
-}
-
-function resetPomo() {
-  if (pomoInterval) { clearInterval(pomoInterval); pomoInterval = null; }
-  const s = loadSettings();
-  pomoState = { running: false, type: "work", remaining: s.pomodoro.work * 60 };
-  pomoUpdateDisplay();
-}
-
+// ─── Pomodoro ─── (see script.js for full implementation)
+// Legacy stub for compatibility
 function initPomodoro() {
+  if (typeof updatePomoRing === "function") updatePomoRing();
+  if (typeof initPomodoro._newInit === "function") { initPomodoro._newInit(); return; }
   const el = document.getElementById("widget-pomo");
   if (!el) return;
   const btn = el.querySelector(".pomo-btn");
   const resetBtn = el.querySelector(".pomo-reset");
   if (!btn || !resetBtn) return;
+}
 
-  if (!pomoState._initialized) {
+function resetPomo() {
+  if (typeof pomoState !== "undefined" && typeof updatePomoRing === "function") {
     const s = loadSettings();
+    pomoState.running = false;
+    pomoState.type = "work";
     pomoState.remaining = s.pomodoro.work * 60;
-    pomoUpdateDisplay();
-
-    btn.addEventListener("click", function () {
-      if (pomoState.running) {
-        clearInterval(pomoInterval);
-        pomoInterval = null;
-        pomoState.running = false;
-        pomoUpdateDisplay();
-      } else {
-        pomoState.running = true;
-        pomoInterval = setInterval(pomoTick, 1000);
-        pomoUpdateDisplay();
-      }
-    });
-
-    resetBtn.addEventListener("click", resetPomo);
-    pomoState._initialized = true;
+    pomoState.total = s.pomodoro.work * 60;
+    if (pomoInterval) { clearInterval(pomoInterval); pomoInterval = null; }
+    updatePomoRing();
   }
 }
 
@@ -537,17 +523,18 @@ function initWeather() {
       return fetch(
         "https://api.open-meteo.com/v1/forecast?latitude=" +
           latitude + "&longitude=" + longitude +
-          "&current_weather=true&daily=temperature_max,temperature_min&temperature_unit=" + unit
+          "&current=temperature_2m,weather_code&daily=temperature_max,temperature_min&temperature_unit=" + unit
       );
     })
     .then((r) => r && r.json())
     .then((data) => {
       if (!data) return;
-      const cur = data.current_weather;
-      const temp = Math.round(cur.temperature);
+      const cur = data.current;
+      const temp = Math.round(cur.temperature_2m);
       const unit = s.widgets.weatherUnit === "celsius" ? "°C" : "°F";
-      const wmo = cur.weathercode;
+      const wmo = cur.weather_code;
       const desc = weatherDescription(wmo);
+      el.style.display = "";
       el.innerHTML =
         '<span class="weather-temp">' + temp + unit + "</span> " +
         '<span class="weather-desc">' + desc + "</span>";
@@ -578,6 +565,8 @@ const DRAGGABLE_SELECTORS = [
   "#widget-date",
   "#widget-todo",
   "#widget-weather",
+  "#widget-habits",
+  "#widget-notes",
   "#time",
   "#settings-btn",
 ];
@@ -642,7 +631,7 @@ function makeDraggable(sel) {
   if (!el || el.dataset.draggableInit) return;
   el.dataset.draggableInit = "1";
 
-  const hasHandle = sel === "#widget-pomo" || sel === "#widget-todo";
+  const hasHandle = sel === "#widget-pomo" || sel === "#widget-todo" || sel === "#widget-habits" || sel === "#widget-notes";
   const isDblClick = !hasHandle;
 
   if (hasHandle) {
@@ -766,14 +755,18 @@ function renderSettingsForm() {
 
   const toggles = [
     ["showGreeting", "Greeting"],
-    ["showTime", "Time"],
-    ["showDate", "Date"],
+    ["showTime", "Clock"],
+    ["showDate", "Date Widget"],
     ["showQuote", "Quote"],
     ["showSearch", "Search Bar"],
+    ["showEngineSwitcher", "Engine Switcher"],
     ["showTopBar", "Top Bar"],
-    ["showShortcuts", "Shortcuts"],
+    ["showShortcuts", "Quick Links"],
     ["showTodo", "Todo List"],
-    ["showPomodoro", "Pomodoro"],
+    ["showPomodoro", "Pomodoro Timer"],
+    ["showHabits", "Habit Tracker"],
+    ["showNotes", "Quick Notes"],
+    ["showSettingsBtn", "Settings button (Press S)"],
   ];
 
   toggles.forEach(([key, label]) => {
@@ -783,7 +776,7 @@ function renderSettingsForm() {
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "set-cb";
-    cb.checked = s.layout[key];
+    cb.checked = s.layout[key] !== undefined ? s.layout[key] : false;
     cb.id = "cb-" + key;
     const lbl = document.createElement("label");
     lbl.htmlFor = "cb-" + key;
@@ -796,7 +789,8 @@ function renderSettingsForm() {
       if (this.checked) {
         if (key === "showTodo" && typeof initTodo === "function") initTodo();
         if (key === "showPomodoro" && typeof initPomodoro === "function") initPomodoro();
-        if (key === "showDate" && typeof updateDateWidget === "function") updateDateWidget();
+        if (key === "showHabits" && typeof initHabits === "function") initHabits();
+        if (key === "showNotes" && typeof initNotes === "function") initNotes();
         if (key === "showDate" || key === "showWeather") {
           const ws = loadSettings();
           if (typeof initWeather === "function") initWeather();
@@ -808,6 +802,25 @@ function renderSettingsForm() {
     row.appendChild(lbl);
     container.appendChild(row);
   });
+
+  // Time format
+  const timeFmtRow = labelRow("Time format");
+  const timeFmt = document.createElement("select");
+  timeFmt.className = "set-select";
+  [["24h", "24-hour"], ["12h", "12-hour (AM/PM)"]].forEach(([v, l]) => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = l;
+    if ((s.timeFormat || "24h") === v) opt.selected = true;
+    timeFmt.appendChild(opt);
+  });
+  timeFmt.addEventListener("change", function () {
+    const st = loadSettings();
+    st.timeFormat = this.value;
+    saveSettings(st);
+  });
+  timeFmtRow.appendChild(timeFmt);
+  container.appendChild(timeFmtRow);
 
   // Lock layout toggle
   const lockRow = labelRow("");
@@ -989,6 +1002,7 @@ function renderSettingsForm() {
   weatherInp.addEventListener("change", function () {
     const st = loadSettings();
     st.widgets.weatherLocation = this.value;
+    st.widgets.weather = true;
     saveSettings(st);
     initWeather();
   });
@@ -1237,6 +1251,35 @@ function renderBackgroundGallery() {
 
   addSection("Solid Colors", BG_PRESETS.solids, "solid");
   addSection("Gradients", BG_PRESETS.gradients, "gradient");
+
+  // Aurora animated option
+  const auroraTitle = document.createElement("div");
+  auroraTitle.className = "bg-gallery-section-title";
+  auroraTitle.textContent = "Animated";
+  content.appendChild(auroraTitle);
+
+  const auroraGrid = document.createElement("div");
+  auroraGrid.className = "bg-gallery-grid";
+  const auroraSwatch = document.createElement("div");
+  auroraSwatch.className = "bg-gallery-swatch" + (s.theme.background.type === "aurora" ? " active" : "");
+  auroraSwatch.style.background = "linear-gradient(135deg, #020617, #1e3a5f, #065f46, #7c3aed)";
+  auroraSwatch.title = "Aurora (animated)";
+  const auroraLabel = document.createElement("span");
+  auroraLabel.className = "bg-gallery-label";
+  auroraLabel.textContent = "✨ Aurora";
+  auroraSwatch.appendChild(auroraLabel);
+  auroraSwatch.addEventListener("click", function () {
+    const st = loadSettings();
+    st.theme.background.type = "aurora";
+    st.theme.background.value = "aurora";
+    saveSettings(st);
+    applySettings();
+    if (typeof stopAurora === "function") stopAurora();
+    if (typeof initAurora === "function") initAurora();
+    closeBackgroundGallery();
+  });
+  auroraGrid.appendChild(auroraSwatch);
+  content.appendChild(auroraGrid);
 
   // Custom section
   const custTitle = document.createElement("div");
