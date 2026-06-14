@@ -75,7 +75,7 @@ const ENV_CONFIG = {
     { name: "Discord",       url: "https://discord.com/channels/@me", category: "Social" },
     { name: "Telegram",      url: "https://web.telegram.org/",    category: "Social" },
     // ── Dev ──
-    { name: "GitHub",        url: "https://github.com/",          category: "Dev" },
+    { name: "GitHub",        url: "https://github.com/{input}",   category: "Dev", prompt: "GitHub username" },
     { name: "Stack Overflow",url: "https://stackoverflow.com/",   category: "Dev" },
     { name: "CodePen",       url: "https://codepen.io/",          category: "Dev" },
     { name: "Hacker News",   url: "https://news.ycombinator.com/",category: "Dev" },
@@ -104,6 +104,12 @@ const ENV_CONFIG = {
     { name: "Canva",         url: "https://www.canva.com/",       category: "Design" },
     // ── Reference ──
     { name: "Wikipedia",     url: "https://en.wikipedia.org/",    category: "Reference" },
-    { name: "Medium",        url: "https://medium.com/",          category: "Reading" }
+    { name: "Medium",        url: "https://medium.com/",          category: "Reading" },
+    // ── Nepali ──
+    { name: "Hamro Patro",   url: "https://hamropatro.com/",      category: "Nepali" },
+    { name: "Khalti",        url: "https://khalti.com/",         category: "Nepali" },
+    { name: "eSewa",         url: "https://esewa.com.np/",       category: "Nepali" },
+    { name: "SastoDeal",     url: "https://www.sastodeal.com/",   category: "Nepali" },
+    { name: "Daraz",         url: "https://www.daraz.com.np/",    category: "Nepali" },
   ]
 };
